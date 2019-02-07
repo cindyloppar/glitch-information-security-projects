@@ -14,74 +14,218 @@ var server = require('../server');
 chai.use(chaiHttp);
 
 suite('Functional Tests', function() {
-
-  suite('Routing Tests', function() {
+  
+    suite('POST /api/issues/{project} => object with issue data', function() {
+      
+      test('Every field filled in', function(done) {
+       chai.request(server)
+        .post('/api/issues/test')
+        .send({
+          issue_title: 'Title',
+          issue_text: 'Some text',
+          created_by: 'Rafal',
+          assigned_to: 'Mariusz',
+          status_text: 'Test'
+        })
+        .end(function(err, res){
+          assert.equal(res.status, 200);
+          assert.property(res.body, 'issue_title');
+          assert.property(res.body, 'issue_text');
+          assert.property(res.body, 'created_on');
+          assert.property(res.body, 'updated_on');
+          assert.property(res.body, 'created_by');
+          assert.property(res.body, 'assigned_to');
+          assert.property(res.body, 'open');
+          assert.property(res.body, 'status_text');
+          assert.property(res.body, '_id');
+           _id = res.body._id;
+          assert.equal(res.body.issue_title, 'Title');
+          assert.equal(res.body.issue_text, 'Some text');
+          assert.equal(res.body.created_by, 'Rafal');
+          assert.equal(res.body.assigned_to, 'Mariusz');
+          assert.equal(res.body.status_text, 'Test');
+          assert.isBoolean(res.body.open);
+          assert.equal(res.body.open, true);
+          done();
+        });
+      });
+      
+      test('Required fields filled in', function(done) {
+        chai.request(server)
+        .post('/api/issues/test')
+        .send({
+          issue_title: 'Title',
+          issue_text: 'text',
+          created_by: 'Rafal'
+        })
+        .end(function(err, res){
+          assert.equal(res.status, 200);
+          assert.property(res.body, 'issue_title');
+          assert.property(res.body, 'issue_text');
+          assert.property(res.body, 'created_on');
+          assert.property(res.body, 'updated_on');
+          assert.property(res.body, 'created_by');
+          assert.property(res.body, 'assigned_to');
+          assert.property(res.body, 'open');
+          assert.property(res.body, 'status_text');
+          assert.property(res.body, '_id');
+          assert.equal(res.body.issue_title, 'Title');
+          assert.equal(res.body.issue_text, 'text');
+          assert.equal(res.body.created_by, 'Rafal');
+          assert.equal(res.body.assigned_to, '');
+          assert.equal(res.body.status_text, '');
+          assert.isBoolean(res.body.open);
+          assert.equal(res.body.open, true);
+          done();
+        });
+      });
+      
+      test('Missing required fields', function(done) {
+       chai.request(server)
+        .post('/api/issues/test')
+        .send({
+          issue_title: 'Title',
+          created_by: 'Functional Test - Missing required fields',
+          assigned_to: 'me'
+        })
+        .end(function(err, res){
+          assert.equal(res.status, 200);
+          assert.equal(res.text, 'missing inputs');
+          done();
+        });   
+        
+      });
+      
+    });
     
-    suite('GET /api/convert => conversion object', function() {
+    suite('PUT /api/issues/{project} => text', function() {
       
-      test('Convert 10L (valid input)', function(done) {
-       chai.request(server)
-        .get('/api/convert')
-        .query({input: '10L'})
+      test('No body', function(done) {
+        chai.request(server)
+        .put('/api/issues/test')
+        .send({_id: _id})
         .end(function(err, res){
           assert.equal(res.status, 200);
-          assert.equal(res.body.initNum, 10);
-          assert.equal(res.body.initUnit, 'L');
-          assert.approximately(res.body.returnNum, 2.64172, 0.1);
-          assert.equal(res.body.returnUnit, 'gal');
+          assert.equal(res.text, 'no updated field sent');
+          done();
+        });        
+      });
+      
+      test('One field to update', function(done) {
+        chai.request(server)
+        .put('/api/issues/test')
+        .send({_id: _id, issue_text: 'updated text'})
+        .end(function(err, res){
+          assert.equal(res.status, 200);
+          assert.equal(res.text, 'successfully updated');
+          done();
+        });  
+      });
+      
+      test('Multiple fields to update', function(done) {
+        chai.request(server)
+        .put('/api/issues/test')
+        .send({_id: _id, issue_text: 'updated text', open: false})
+        .end(function(err, res){
+          assert.equal(res.status, 200);
+          assert.equal(res.text, 'successfully updated');
+          done();
+        });  
+      });
+      
+    });
+    
+    suite('GET /api/issues/{project} => Array of objects with issue data', function() {
+      
+      test('No filter', function(done) {
+        chai.request(server)
+        .get('/api/issues/test')
+        .query({})
+        .end(function(err, res){
+          assert.equal(res.status, 200);
+          assert.isArray(res.body);
+          assert.property(res.body[0], 'issue_title');
+          assert.property(res.body[0], 'issue_text');
+          assert.property(res.body[0], 'created_on');
+          assert.property(res.body[0], 'updated_on');
+          assert.property(res.body[0], 'created_by');
+          assert.property(res.body[0], 'assigned_to');
+          assert.property(res.body[0], 'open');
+          assert.property(res.body[0], 'status_text');
+          assert.property(res.body[0], '_id');
           done();
         });
       });
       
-      test('Convert 32g (invalid input unit)', function(done) {
-       chai.request(server)
-        .get('/api/convert')
-        .query({input: '32g'})
+      test('One filter', function(done) {
+        chai.request(server)
+        .get('/api/issues/test')
+        .query({created_by: 'Rafal'})
         .end(function(err, res){
           assert.equal(res.status, 200);
-          assert.equal(res.text, 'invalid unit');
+          assert.isArray(res.body);
+          assert.property(res.body[0], 'issue_title');
+          assert.property(res.body[0], 'issue_text');
+          assert.property(res.body[0], 'created_on');
+          assert.property(res.body[0], 'updated_on');
+          assert.property(res.body[0], 'created_by');
+          assert.property(res.body[0], 'assigned_to');
+          assert.property(res.body[0], 'open');
+          assert.property(res.body[0], 'status_text');
+          assert.property(res.body[0], '_id');
+          assert.equal(res.body[0].created_by, 'Rafal')
           done();
         });
       });
       
-      test('Convert 3/7..2/4kg (invalid number)', function(done) {
-       chai.request(server)
-        .get('/api/convert')
-        .query({input: '3/7.2/4kg'})
+      test('Multiple filters (test for multiple fields you know will be in the db for a return)', function(done) {
+        chai.request(server)
+        .get('/api/issues/test')
+        .query({created_by: 'Rafal', assigned_to: 'Mariusz'})
         .end(function(err, res){
           assert.equal(res.status, 200);
-          assert.equal(res.text, 'invalid number');
-          done();
-        });
-      });  
-      
-      test('Convert 3/7..2/4kilomegagram (invalid number and unit)', function(done) {
-       chai.request(server)
-        .get('/api/convert')
-        .query({input: '3/7..2/4kilomegagram'})
-        .end(function(err, res){
-          assert.equal(res.status, 200);
-          assert.equal(res.text, 'invalid number and unit');
-          done();
-        });
-      });
-      
-      test('Convert kg (no number)', function(done) {
-       chai.request(server)
-        .get('/api/convert')
-        .query({input: 'kg'})
-        .end(function(err, res){
-          assert.equal(res.status, 200);
-          assert.equal(res.body.initUnit, 'kg');
-          assert.equal(res.body.returnUnit, 'lbs');
-          assert.equal(res.body.initNum, '1');
-          assert.approximately(res.body.returnNum, 2.20462, 0.1);
+          assert.isArray(res.body);
+          assert.property(res.body[0], 'issue_title');
+          assert.property(res.body[0], 'issue_text');
+          assert.property(res.body[0], 'created_on');
+          assert.property(res.body[0], 'updated_on');
+          assert.property(res.body[0], 'created_by');
+          assert.property(res.body[0], 'assigned_to');
+          assert.property(res.body[0], 'open');
+          assert.property(res.body[0], 'status_text');
+          assert.property(res.body[0], '_id');
+          assert.equal(res.body[0].created_by, 'Rafal');
+          assert.equal(res.body[0].assigned_to, 'Mariusz');
           done();
         });
       });
       
     });
-
-  });
+    
+    suite('DELETE /api/issues/{project} => text', function() {
+      
+      test('No _id', function(done) {
+        chai.request(server)
+        .delete('/api/issues/test')
+        .send({})
+        .end(function(err, res){
+          assert.equal(res.status, 200);
+          assert.equal(res.text, '_id error');
+          done();
+        });  
+      });
+      
+      test('Valid _id', function(done) {
+        chai.request(server)
+        .delete('/api/issues/test')
+        .send({_id: "id"})
+        .end(function(err, res){
+          assert.equal(res.status, 200);
+          assert.equal(res.text, 'deleted '+ "id");
+          done();
+        });  
+      });
+      
+    });
 
 });
